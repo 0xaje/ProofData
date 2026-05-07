@@ -61,7 +61,8 @@ export default function Home() {
       });
       
       // 2. Hit the backend payment trigger using connected wallet address
-      const payRes = await fetch(`http://localhost:3001/dataset/${datasetId}/pay`, {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      const payRes = await fetch(`${backendUrl}/dataset/${datasetId}/pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ buyerAddress: account.address.toString() })
@@ -75,7 +76,7 @@ export default function Home() {
       setDownloadedData(null); // Clear previous
 
       // 4. Download the dataset through the secure backend endpoint via fetch so we can display it!
-      const dataRes = await fetch(`http://localhost:3001/dataset/${datasetId}?uri=shelby://QmMockHash123&buyerAddress=${account.address.toString()}`);
+      const dataRes = await fetch(`${backendUrl}/dataset/${datasetId}?uri=shelby://QmMockHash123&buyerAddress=${account.address.toString()}`);
       
       // Read the response as text so we can display it in the viewer
       const textData = await dataRes.text();
@@ -106,7 +107,8 @@ export default function Home() {
       formData.append('dataset', file);
 
       // 1. Upload to backend (Shelby)
-      const res = await fetch('http://localhost:3001/dataset/upload', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      const res = await fetch(`${backendUrl}/dataset/upload`, {
         method: 'POST',
         body: formData
       });
