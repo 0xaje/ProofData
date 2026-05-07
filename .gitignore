@@ -1,0 +1,10 @@
+node_modules/
+.next/
+dist/
+build/
+.env
+.env.local
+shelby_storage/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*

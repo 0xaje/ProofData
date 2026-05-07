@@ -1,0 +1,15 @@
+[package]
+name = "ProofData"
+version = "1.0.0"
+authors = []
+
+[addresses]
+ProofData = "_"
+[dev-addresses]
+
+[dependencies.AptosFramework]
+git = "https://github.com/aptos-labs/aptos-framework.git"
+rev = "testnet"
+subdir = "aptos-framework"
+
+[dev-dependencies]
