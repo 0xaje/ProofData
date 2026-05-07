@@ -1,17 +1,24 @@
-import { ShelbyNodeClient } from '@shelby-protocol/sdk/node';
 import { Account } from '@aptos-labs/ts-sdk';
-
-// Initialize the real Shelby SDK Client using the Shelbynet RPC
-const shelbyClient = new ShelbyNodeClient({
-    network: "SHELBYNET" as any,
-    rpc: {
-        baseUrl: "https://api.shelbynet.shelby.xyz/shelby"
-    }
-});
 
 // A dedicated backend Aptos account for signing data blobs to the Shelby network.
 // In a production environment, this should be loaded from a private key in a .env file!
-const backendSigner = Account.generate();
+const backendSigner = Account.generate() as any;
+
+let shelbyClientInstance: any = null;
+
+const getShelbyClient = async () => {
+    if (!shelbyClientInstance) {
+        // Dynamic import to support ESM-only modules inside our CommonJS backend
+        const { ShelbyNodeClient } = await import('@shelby-protocol/sdk/node');
+        shelbyClientInstance = new ShelbyNodeClient({
+            network: "SHELBYNET" as any,
+            rpc: {
+                baseUrl: "https://api.shelbynet.shelby.xyz/shelby"
+            }
+        });
+    }
+    return shelbyClientInstance;
+};
 
 /**
  * Upload dataset to the decentralized Shelby Storage network
@@ -21,7 +28,8 @@ export const shelbyUpload = async (fileBuffer: Buffer, filename: string = "datas
     console.log(`Uploading ${filename} to Shelbynet...`);
     
     // Upload using the official SDK client
-    const response = await shelbyClient.upload({
+    const client = await getShelbyClient();
+    const response = await client.upload({
         blobData: fileBuffer,
         signer: backendSigner,
         blobName: filename,
@@ -44,8 +52,9 @@ export const shelbyRetrieve = async (uri: string): Promise<Buffer | null> => {
     console.log(`Retrieving blob ${blobId} from Shelbynet...`);
     
     try {
-        // Typically something like: await shelbyClient.download({ blobId })
-        const response = (await (shelbyClient as any).download?.({ blobId })) || (await (shelbyClient as any).readBlob?.({ blobId }));
+        const client = await getShelbyClient();
+        // Typically something like: await client.download({ blobId })
+        const response = (await (client as any).download?.({ blobId })) || (await (client as any).readBlob?.({ blobId }));
         if (response && response.blobData) {
             return Buffer.from(response.blobData);
         }
