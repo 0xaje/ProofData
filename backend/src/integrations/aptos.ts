@@ -1,9 +1,13 @@
 import { Aptos, AptosConfig, Network } from '@aptos-labs/ts-sdk';
 
-const aptosConfig = new AptosConfig({ network: Network.TESTNET });
+const aptosConfig = new AptosConfig({ 
+    network: Network.CUSTOM,
+    fullnode: "https://api.shelbynet.shelby.xyz/v1",
+    indexer: "https://api.shelbynet.shelby.xyz/v1/graphql"
+});
 export const aptos = new Aptos(aptosConfig);
 
-export const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '0x123';
+export const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '0xedb90d56ac0bc2553b546f4c4ca433bd1d8c58ceb1fc51314a74cefed867edff';
 
 export const verifyPaymentEvent = async (datasetId: string, buyerAddress: string): Promise<boolean> => {
     try {

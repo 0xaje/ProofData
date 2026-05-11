@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 
 // In a real app, this would be your published contract address
-const MODULE_ADDRESS = "0x1234567890123456789012345678901234567890123456789012345678901234";
+const MODULE_ADDRESS = "0xedb90d56ac0bc2553b546f4c4ca433bd1d8c58ceb1fc51314a74cefed867edff";
 
 export default function Home() {
   const { account, connected, signAndSubmitTransaction, network } = useWallet();
@@ -179,7 +179,7 @@ export default function Home() {
               <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
                 <p style={{ color: '#9CA3AF', marginBottom: '0.2rem' }}>Aptos Transaction Hash (Real On-Chain):</p>
                 <a 
-                  href={`https://explorer.aptoslabs.com/txn/${uploadResult.aptosTxHash}?network=${network?.name?.toLowerCase() || 'devnet'}`} 
+                  href={`https://explorer.shelby.xyz/testnet/tx/${uploadResult.aptosTxHash}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   style={{ color: '#34D399', textDecoration: 'underline', wordBreak: 'break-all', fontWeight: 'bold' }}
@@ -248,7 +248,7 @@ export default function Home() {
           <div style={{ marginBottom: '1.5rem', fontSize: '0.9rem' }}>
             <p style={{ color: '#9CA3AF', marginBottom: '0.2rem' }}>Aptos Payment Hash (Real On-Chain):</p>
             <a 
-              href={`https://explorer.aptoslabs.com/txn/${purchaseResult.aptosTxHash}?network=${network?.name?.toLowerCase() || 'devnet'}`} 
+              href={`https://explorer.shelby.xyz/testnet/tx/${purchaseResult.aptosTxHash}`} 
               target="_blank" 
               rel="noopener noreferrer"
               style={{ color: '#34D399', textDecoration: 'underline', wordBreak: 'break-all', fontWeight: 'bold' }}
