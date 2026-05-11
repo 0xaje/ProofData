@@ -88,7 +88,15 @@ export default function Home() {
       if (error.message && error.message.includes("User rejected")) {
         console.log("User rejected transaction");
       } else {
-        const errorMsg = error.message || "Transaction failed";
+        let errorMsg = error.message || "Transaction failed";
+        
+        // Detect "Bad Gateway" or other non-JSON responses from RPC/Backend
+        if (errorMsg.includes("Unexpected token 'B'") || errorMsg.includes("Bad Gateway")) {
+          errorMsg = "The Shelbynet RPC node is currently down or returning a 'Bad Gateway' error. Please try again in a few minutes or check your network connection.";
+        } else if (errorMsg.includes("Unexpected token") || errorMsg.includes("is not valid JSON")) {
+          errorMsg = "Received an invalid response from the network. This usually means the RPC node is having issues.";
+        }
+
         alert(`Error: ${errorMsg}\n\nHint: Ensure your wallet is connected to Shelby Testnet and the backend is running.`);
       }
     }
@@ -146,7 +154,15 @@ export default function Home() {
       setFile(null);
       setPrice("");
     } catch (error: any) {
-      alert(`Registration Failed: ${error.message}`);
+      let errorMsg = error.message || "Unknown error";
+      
+      if (errorMsg.includes("Unexpected token 'B'") || errorMsg.includes("Bad Gateway")) {
+        errorMsg = "The Shelbynet RPC node is currently down (502 Bad Gateway). This is a network-side issue. Please try again later.";
+      } else if (errorMsg.includes("Unexpected token") || errorMsg.includes("is not valid JSON")) {
+        errorMsg = "Received an invalid response from the network. The RPC node might be unstable.";
+      }
+
+      alert(`Registration Failed: ${errorMsg}`);
     }
   };
 
