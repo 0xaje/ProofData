@@ -56,9 +56,11 @@ export default function Home() {
         data: {
           function: "0x1::aptos_account::transfer",
           typeArguments: [],
-          functionArguments: [account.address, priceInOctas] // Send to their own address so it never fails from bad recipients
+          functionArguments: [account.address.toString(), priceInOctas.toString()] // Use string for u64 and address to avoid SDK simulation errors
         }
       });
+      // Ensure the hash has the 0x prefix
+      const aptosTxHash = txResponse.hash.startsWith("0x") ? txResponse.hash : `0x${txResponse.hash}`;
       
       // 2. Hit the backend payment trigger using connected wallet address
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
@@ -69,10 +71,10 @@ export default function Home() {
       });
       const payData = await payRes.json();
       
-      if (!payRes.ok) throw new Error(payData.error);
+      if (!payRes.ok) throw new Error(payData.error || "Backend payment processing failed. Is the backend running?");
       
       // 3. Show Success Modal
-      setPurchaseResult({ datasetId, aptosTxHash: txResponse.hash });
+      setPurchaseResult({ datasetId, aptosTxHash });
       setDownloadedData(null); // Clear previous
 
       // 4. Download the dataset through the secure backend endpoint via fetch so we can display it!
@@ -86,7 +88,8 @@ export default function Home() {
       if (error.message && error.message.includes("User rejected")) {
         console.log("User rejected transaction");
       } else {
-        alert(`Error: ${error.message || "Transaction failed"}`);
+        const errorMsg = error.message || "Transaction failed";
+        alert(`Error: ${errorMsg}\n\nHint: Ensure your wallet is connected to Shelby Testnet and the backend is running.`);
       }
     }
   };
@@ -124,13 +127,14 @@ export default function Home() {
           data: {
             function: "0x1::aptos_account::transfer",
             typeArguments: [],
-            functionArguments: [account.address, priceInOctas]
+            functionArguments: [account.address.toString(), priceInOctas.toString()]
           }
         });
-        aptosTxHash = txResponse.hash;
-        console.log("Registered on-chain!", txResponse.hash);
+        // Ensure the hash has the 0x prefix if the wallet doesn't provide it
+        aptosTxHash = txResponse.hash.startsWith("0x") ? txResponse.hash : `0x${txResponse.hash}`;
+        console.log("Registered on-chain!", aptosTxHash);
       } catch (txError: any) {
-        throw new Error(txError.message || "Wallet transaction failed or was cancelled.");
+        throw new Error(txError.message || "Wallet transaction failed or was cancelled. Ensure your wallet is on Shelby Testnet.");
       }
 
       setUploadResult({
@@ -179,7 +183,7 @@ export default function Home() {
               <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
                 <p style={{ color: '#9CA3AF', marginBottom: '0.2rem' }}>Aptos Transaction Hash (Real On-Chain):</p>
                 <a 
-                  href={`https://explorer.shelby.xyz/testnet/tx/${uploadResult.aptosTxHash}`} 
+                  href={`https://explorer.shelby.xyz/testnet/txn/${uploadResult.aptosTxHash}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   style={{ color: '#34D399', textDecoration: 'underline', wordBreak: 'break-all', fontWeight: 'bold' }}
@@ -191,7 +195,7 @@ export default function Home() {
               <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
                 <p style={{ color: '#9CA3AF', marginBottom: '0.2rem' }}>Shelby Storage Transaction Hash:</p>
                 <a 
-                  href={`https://explorer.shelby.xyz/testnet/tx/${uploadResult.hash}`} 
+                  href={`https://explorer.shelby.xyz/testnet/txn/${uploadResult.hash.startsWith('0x') ? uploadResult.hash : '0x' + uploadResult.hash}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   style={{ color: '#60A5FA', textDecoration: 'underline', wordBreak: 'break-all' }}
@@ -248,7 +252,7 @@ export default function Home() {
           <div style={{ marginBottom: '1.5rem', fontSize: '0.9rem' }}>
             <p style={{ color: '#9CA3AF', marginBottom: '0.2rem' }}>Aptos Payment Hash (Real On-Chain):</p>
             <a 
-              href={`https://explorer.shelby.xyz/testnet/tx/${purchaseResult.aptosTxHash}`} 
+              href={`https://explorer.shelby.xyz/testnet/txn/${purchaseResult.aptosTxHash}`} 
               target="_blank" 
               rel="noopener noreferrer"
               style={{ color: '#34D399', textDecoration: 'underline', wordBreak: 'break-all', fontWeight: 'bold' }}
