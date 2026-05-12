@@ -118,8 +118,8 @@ export default function Home() {
       const priceInOctas = Math.floor(parseFloat(price || "0") * 100000000);
       
       const formData = new FormData();
-      formData.append('dataset', file);
       formData.append('price', priceInOctas.toString());
+      formData.append('dataset', file);
 
       // 1. Upload & Register (Backend now handles both)
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
@@ -135,7 +135,7 @@ export default function Home() {
         hash: data.hash,
         storagePointer: data.storage_pointer,
         datasetId: data.dataset_id,
-        aptosTxHash: data.aptos_tx_hash || "Registration pending"
+        aptosTxHash: data.aptos_tx_hash || "Registration in progress / check explorer"
       });
       setFile(null);
       setPrice("");

@@ -13,14 +13,19 @@ export const processUpload = async (fileBuffer: Buffer, price?: string): Promise
     const storagePointer = await uploadDataset(fileBuffer, hash);
     const datasetId = `ds_${Date.now()}`;
     
+    console.log(`Processing upload: ${datasetId}, price: ${price}`);
+
     let onChainTxHash: string | undefined;
-    if (price) {
+    if (price && price !== "undefined" && price !== "null") {
         try {
+            console.log(`Attempting on-chain registration for ${datasetId}...`);
             onChainTxHash = await registerDatasetOnChain(datasetId, storagePointer, hash, price);
             console.log(`Successfully registered ${datasetId} on-chain. TX: ${onChainTxHash}`);
         } catch (e: any) {
-            console.warn(`On-chain registration failed for ${datasetId}, but file is in Shelby:`, e.message);
+            console.error(`CRITICAL: On-chain registration failed for ${datasetId}:`, e.message);
         }
+    } else {
+        console.warn(`No valid price provided for ${datasetId}, skipping on-chain registration.`);
     }
 
     return { datasetId, storagePointer, hash, onChainTxHash };
