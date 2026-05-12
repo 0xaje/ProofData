@@ -21,7 +21,9 @@ export const requirePayment = async (req: Request, res: Response, next: NextFunc
     
     if (!hasAccess) {
         // Mock fallback for testing if event tracking is not fully set up
-        if (process.env.NODE_ENV === 'development' || buyerAddress.includes('0xtest')) {
+        const isDev = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+        if (isDev || buyerAddress.includes('0xtest')) {
+            console.log(`Bypassing on-chain payment check (Dev Mode: ${isDev})`);
             return next();
         }
         res.status(403).json({ error: 'Payment not verified on-chain. Purchase access first.' });

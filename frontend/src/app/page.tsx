@@ -39,48 +39,54 @@ export default function Home() {
     }
   ]);
 
-  const handlePurchase = async (datasetId: number) => {
+  const handlePurchase = async (datasetId: number | string) => {
     if (!connected || !account?.address) {
       alert("Please connect your Aptos wallet first to purchase data!");
       return;
     }
 
     const dataset = datasets.find(d => d.id === datasetId);
-    if (!dataset) return;
-
+    // For featured datasets, we use their mock ID, for newly registered ones we use their returned ID
+    const effectiveId = dataset ? dataset.id.toString() : datasetId.toString();
+    
     try {
-      // 1. POP UP THE WALLET FOR PAYMENT (ON-CHAIN)
-      const priceInOctas = Math.floor(parseFloat(dataset.price) * 100000000);
+      // 1. CALL THE SMART CONTRACT TO PAY AND ACCESS
+      console.log(`Purchasing dataset ${effectiveId} via contract...`);
       
       const txResponse = await signAndSubmitTransaction({
         data: {
-          function: "0x1::aptos_account::transfer",
+          function: `${MODULE_ADDRESS}::dataset_registry::pay_and_access`,
           typeArguments: [],
-          functionArguments: [account.address.toString(), priceInOctas.toString()] // Use string for u64 and address to avoid SDK simulation errors
+          functionArguments: [effectiveId]
         }
       });
+      
       // Ensure the hash has the 0x prefix
       const aptosTxHash = txResponse.hash.startsWith("0x") ? txResponse.hash : `0x${txResponse.hash}`;
       
       // 2. Hit the backend payment trigger using connected wallet address
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
-      const payRes = await fetch(`${backendUrl}/dataset/${datasetId}/pay`, {
+      const payRes = await fetch(`${backendUrl}/dataset/${effectiveId}/pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ buyerAddress: account.address.toString() })
       });
       const payData = await payRes.json();
       
-      if (!payRes.ok) throw new Error(payData.error || "Backend payment processing failed. Is the backend running?");
+      if (!payRes.ok) throw new Error(payData.error || "Backend payment processing failed.");
       
       // 3. Show Success Modal
-      setPurchaseResult({ datasetId, aptosTxHash });
-      setDownloadedData(null); // Clear previous
+      setPurchaseResult({ datasetId: Number(effectiveId) || 0, aptosTxHash });
+      setDownloadedData(null);
 
-      // 4. Download the dataset through the secure backend endpoint via fetch so we can display it!
-      const dataRes = await fetch(`${backendUrl}/dataset/${datasetId}?uri=shelby://QmMockHash123&buyerAddress=${account.address.toString()}`);
+      // 4. Download the dataset
+      const dataRes = await fetch(`${backendUrl}/dataset/${effectiveId}?buyerAddress=${account.address.toString()}`);
       
-      // Read the response as text so we can display it in the viewer
+      if (!dataRes.ok) {
+        const errText = await dataRes.text();
+        throw new Error(errText || "Failed to download dataset contents.");
+      }
+
       const textData = await dataRes.text();
       setDownloadedData(textData);
 
@@ -89,15 +95,10 @@ export default function Home() {
         console.log("User rejected transaction");
       } else {
         let errorMsg = error.message || "Transaction failed";
-        
-        // Detect "Bad Gateway" or other non-JSON responses from RPC/Backend
-        if (errorMsg.includes("Unexpected token 'B'") || errorMsg.includes("Bad Gateway")) {
-          errorMsg = "The Shelbynet RPC node is currently down or returning a 'Bad Gateway' error. Please try again in a few minutes or check your network connection.";
-        } else if (errorMsg.includes("Unexpected token") || errorMsg.includes("is not valid JSON")) {
-          errorMsg = "Received an invalid response from the network. This usually means the RPC node is having issues.";
+        if (errorMsg.includes("E_DATASET_NOT_FOUND")) {
+          errorMsg = "This dataset is not yet registered on the blockchain. Please register a dataset first using the 'Register Data' button!";
         }
-
-        alert(`Error: ${errorMsg}\n\nHint: Ensure your wallet is connected to Shelby Testnet and the backend is running.`);
+        alert(`Error: ${errorMsg}`);
       }
     }
   };
@@ -131,18 +132,23 @@ export default function Home() {
       let aptosTxHash = "";
       
       try {
+        // 2. REGISTER ON-CHAIN
+        console.log("Registering on-chain:", data.dataset_id);
         const txResponse = await signAndSubmitTransaction({
           data: {
-            function: "0x1::aptos_account::transfer",
+            function: `${MODULE_ADDRESS}::dataset_registry::register_dataset`,
             typeArguments: [],
-            functionArguments: [account.address.toString(), priceInOctas.toString()]
+            functionArguments: [
+              data.dataset_id,
+              data.storage_pointer,
+              data.hash.startsWith('0x') ? data.hash : `0x${data.hash}`, 
+              priceInOctas.toString()
+            ]
           }
         });
-        // Ensure the hash has the 0x prefix if the wallet doesn't provide it
         aptosTxHash = txResponse.hash.startsWith("0x") ? txResponse.hash : `0x${txResponse.hash}`;
-        console.log("Registered on-chain!", aptosTxHash);
       } catch (txError: any) {
-        throw new Error(txError.message || "Wallet transaction failed or was cancelled. Ensure your wallet is on Shelby Testnet.");
+        throw new Error(txError.message || "Wallet transaction failed.");
       }
 
       setUploadResult({
@@ -154,15 +160,7 @@ export default function Home() {
       setFile(null);
       setPrice("");
     } catch (error: any) {
-      let errorMsg = error.message || "Unknown error";
-      
-      if (errorMsg.includes("Unexpected token 'B'") || errorMsg.includes("Bad Gateway")) {
-        errorMsg = "The Shelbynet RPC node is currently down (502 Bad Gateway). This is a network-side issue. Please try again later.";
-      } else if (errorMsg.includes("Unexpected token") || errorMsg.includes("is not valid JSON")) {
-        errorMsg = "Received an invalid response from the network. The RPC node might be unstable.";
-      }
-
-      alert(`Registration Failed: ${errorMsg}`);
+      alert(`Registration Failed: ${error.message || "Unknown error"}`);
     }
   };
 

@@ -1,9 +1,14 @@
 [package]
-name = "ProofData"
+name = "ProofDataRegistry"
 version = "1.0.0"
 authors = []
 
 [addresses]
 ProofData = "0xedb90d56ac0bc2553b546f4c4ca433bd1d8c58ceb1fc51314a74cefed867edff"
 
+[dev-addresses]
+
 [dependencies]
+AptosFrameworkShims = { local = "./framework_shims" }
+
+[dev-dependencies]

@@ -1,9 +1,8 @@
 import { Aptos, AptosConfig, Network } from '@aptos-labs/ts-sdk';
 
 const aptosConfig = new AptosConfig({ 
-    network: Network.CUSTOM,
-    fullnode: "https://api.shelbynet.shelby.xyz/v1",
-    indexer: "https://api.shelbynet.shelby.xyz/v1/graphql"
+    network: (process.env.NETWORK as Network) || Network.CUSTOM,
+    fullnode: process.env.FULLNODE_URL || "https://api.shelbynet.shelby.xyz/v1",
 });
 export const aptos = new Aptos(aptosConfig);
 
@@ -11,15 +10,35 @@ export const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '0xedb90d56ac0bc
 
 export const verifyPaymentEvent = async (datasetId: string, buyerAddress: string): Promise<boolean> => {
     try {
-        const events = await (aptos as any).getAccountEventsByEventType({
-            accountAddress: CONTRACT_ADDRESS,
-            eventType: `${CONTRACT_ADDRESS}::dataset_registry::DatasetAccessed`,
+        console.log(`Verifying payment for dataset: ${datasetId}, buyer: ${buyerAddress}`);
+        
+        // Verify by checking transactions from the buyer's account that call pay_and_access
+        const transactions = await (aptos as any).getAccountTransactions({
+            accountAddress: buyerAddress,
+            options: { limit: 25 }
         });
         
-        const hasPaid = events.some((e: any) => 
-            e.data.dataset_id === datasetId && 
-            e.data.user === buyerAddress
-        );
+        console.log(`Found ${transactions.length} transactions for buyer`);
+
+        const hasPaid = transactions.some((tx: any) => {
+            if (!tx.payload) return false;
+            const fnId: string = tx.payload.function || '';
+            const args: any[] = tx.payload.arguments || [];
+            
+            console.log(`Checking TX: ${fnId}, Args: ${JSON.stringify(args)}`);
+            
+            const isPayAndAccess = fnId === `${CONTRACT_ADDRESS}::dataset_registry::pay_and_access`;
+            const matchesDataset = args.length > 0 && args[0] === datasetId;
+            const txSuccess = tx.success === true;
+            
+            return isPayAndAccess && matchesDataset && txSuccess;
+        });
+
+        if (hasPaid) {
+            console.log(`Payment verified for ${buyerAddress} on dataset ${datasetId}`);
+        } else {
+            console.log(`Payment NOT found for ${buyerAddress} on dataset ${datasetId}`);
+        }
 
         return hasPaid;
     } catch (error) {
@@ -28,21 +47,39 @@ export const verifyPaymentEvent = async (datasetId: string, buyerAddress: string
     }
 };
 
-export const fetchDatasetOnChainHash = async (datasetId: string): Promise<string | null> => {
+export const fetchDatasetOnChainInfo = async (datasetId: string): Promise<{ owner: string, storagePointer: string, hash: string, price: string, version: string } | null> => {
     try {
         const payload = {
-            function: `${CONTRACT_ADDRESS}::dataset_registry::get_dataset_info`,
-            type_arguments: [],
-            arguments: [datasetId]
+            function: `${CONTRACT_ADDRESS}::dataset_registry::get_dataset_info` as `${string}::${string}::${string}`,
+            typeArguments: [],
+            functionArguments: [datasetId] as any[]
         };
-        const [owner, storage_pointer, hashBytes, price, version] = await (aptos as any).view(payload);
+        const result = await aptos.view({ payload });
+        const [owner, storage_pointer, hashBytes, price, version] = result as any[];
         
-        // Convert hashBytes (vector<u8>) to hex string
-        return Buffer.from(hashBytes.substring(2), 'hex').toString('hex');
+        let hashStr = "";
+        if (typeof hashBytes === 'string') {
+            hashStr = hashBytes.startsWith('0x') ? hashBytes.substring(2) : hashBytes;
+        } else if (Array.isArray(hashBytes)) {
+            hashStr = Buffer.from(hashBytes).toString('hex');
+        }
+
+        return {
+            owner: owner.toString(),
+            storagePointer: storage_pointer.toString(),
+            hash: hashStr,
+            price: price.toString(),
+            version: version.toString()
+        };
     } catch (error) {
-        console.error('Error fetching on-chain hash:', error);
+        console.error('Error fetching on-chain info:', error);
         return null;
     }
+};
+
+export const fetchDatasetOnChainHash = async (datasetId: string): Promise<string | null> => {
+    const info = await fetchDatasetOnChainInfo(datasetId);
+    return info ? info.hash : null;
 };
 
 export const triggerMockAptosPayment = async (datasetId: string, buyerAddress: string) => {

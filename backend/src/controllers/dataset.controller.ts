@@ -27,11 +27,6 @@ export const getDataset = async (req: Request, res: Response): Promise<void> => 
         const id = req.params.id as string;
         const uri = req.query.uri as string;
 
-        if (!uri) {
-            res.status(400).json({ error: 'Dataset URI required' });
-            return;
-        }
-
         const result = await datasetService.retrieveDataset(id, uri);
         if (!result) {
             res.status(404).json({ error: 'Dataset not found in Shelby' });
@@ -75,11 +70,6 @@ export const verifyDataset = async (req: Request, res: Response): Promise<void> 
     try {
         const id = req.params.id as string;
         const uri = req.query.uri as string;
-
-        if (!uri) {
-            res.status(400).json({ error: 'Dataset URI required' });
-            return;
-        }
 
         const verification = await datasetService.verifyIntegrity(id, uri);
         if (!verification) {
