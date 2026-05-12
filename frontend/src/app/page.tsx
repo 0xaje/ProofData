@@ -61,11 +61,19 @@ export default function Home() {
         }
       });
       
+      // WAIT FOR TRANSACTION TO BE CONFIRMED ON-CHAIN
+      console.log("Waiting for transaction confirmation:", txResponse.hash);
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+      
+      // Note: We use the hash to check status if needed, 
+      // but the wallet adapter signAndSubmitTransaction already wait for submission.
+      // We should ideally wait for indexing, but a short delay or retry logic is better.
+      await new Promise(resolve => setTimeout(resolve, 2000)); 
+
       // Ensure the hash has the 0x prefix
       const aptosTxHash = txResponse.hash.startsWith("0x") ? txResponse.hash : `0x${txResponse.hash}`;
       
       // 2. Hit the backend payment trigger using connected wallet address
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
       const payRes = await fetch(`${backendUrl}/dataset/${effectiveId}/pay`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
