@@ -15,6 +15,19 @@ export const registerDatasetOnChain = async (id: string, storagePointer: string,
     const privateKey = new Ed25519PrivateKey(PRIVATE_KEY);
     const account = Account.fromPrivateKey({ privateKey });
 
+    console.log(`Backend registering dataset using account: ${account.accountAddress.toString()}`);
+
+    // AUTO-FUND: Ensure backend has gas on testnet
+    try {
+        const balance = await aptos.getAccountAPTAmount({ accountAddress: account.accountAddress });
+        if (balance < 1000000) { // Less than 0.01 APT
+            console.log("Backend balance low, requesting faucet...");
+            await aptos.fundAccount({ accountAddress: account.accountAddress, amount: 100000000 }); // 1 APT
+        }
+    } catch (e) {
+        console.warn("Faucet auto-fund failed (may not be available on this network):", e);
+    }
+
     // Convert hex hash to byte array
     const hashHex = hash.startsWith('0x') ? hash.substring(2) : hash;
     const hashBytes = hashHex.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || [];

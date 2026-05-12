@@ -186,7 +186,7 @@ export default function Home() {
               <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
                 <p style={{ color: '#9CA3AF', marginBottom: '0.2rem' }}>Aptos Transaction Hash (Real On-Chain):</p>
                 <a 
-                  href={`https://explorer.shelby.xyz/testnet/txn/${uploadResult.aptosTxHash}`} 
+                  href={`https://explorer.shelbynet.shelby.xyz/txn/${uploadResult.aptosTxHash}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   style={{ color: '#34D399', textDecoration: 'underline', wordBreak: 'break-all', fontWeight: 'bold' }}
@@ -198,7 +198,7 @@ export default function Home() {
               <div style={{ marginBottom: '1rem', fontSize: '0.9rem' }}>
                 <p style={{ color: '#9CA3AF', marginBottom: '0.2rem' }}>Shelby Storage Transaction Hash:</p>
                 <a 
-                  href={`https://explorer.shelby.xyz/testnet/txn/${uploadResult.hash.startsWith('0x') ? uploadResult.hash : '0x' + uploadResult.hash}`} 
+                  href={`https://explorer.shelbynet.shelby.xyz/txn/${uploadResult.hash.startsWith('0x') ? uploadResult.hash : '0x' + uploadResult.hash}`} 
                   target="_blank" 
                   rel="noopener noreferrer"
                   style={{ color: '#60A5FA', textDecoration: 'underline', wordBreak: 'break-all' }}
@@ -255,7 +255,7 @@ export default function Home() {
           <div style={{ marginBottom: '1.5rem', fontSize: '0.9rem' }}>
             <p style={{ color: '#9CA3AF', marginBottom: '0.2rem' }}>Aptos Payment Hash (Real On-Chain):</p>
             <a 
-              href={`https://explorer.shelby.xyz/testnet/txn/${purchaseResult.aptosTxHash}`} 
+              href={`https://explorer.shelbynet.shelby.xyz/txn/${purchaseResult.aptosTxHash}`} 
               target="_blank" 
               rel="noopener noreferrer"
               style={{ color: '#34D399', textDecoration: 'underline', wordBreak: 'break-all', fontWeight: 'bold' }}
