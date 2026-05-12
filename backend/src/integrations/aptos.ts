@@ -38,40 +38,54 @@ export const registerDatasetOnChain = async (id: string, storagePointer: string,
 };
 
 export const verifyPaymentEvent = async (datasetId: string, buyerAddress: string): Promise<boolean> => {
-    try {
-        console.log(`Verifying payment for dataset: ${datasetId}, buyer: ${buyerAddress}`);
-        
-        // Verify by checking transactions from the buyer's account that call pay_and_access
-        const transactions = await (aptos as any).getAccountTransactions({
-            accountAddress: buyerAddress,
-            options: { limit: 25 }
-        });
-        
-        console.log(`Found ${transactions.length} transactions for buyer`);
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY_MS = 2000;
 
-        const hasPaid = transactions.some((tx: any) => {
-            if (!tx.payload) return false;
-            const fnId: string = tx.payload.function || '';
-            const args: any[] = tx.payload.arguments || [];
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+        try {
+            console.log(`Verifying payment (Attempt ${attempt}/${MAX_RETRIES}) for dataset: ${datasetId}, buyer: ${buyerAddress}`);
             
-            const isPayAndAccess = fnId === `${CONTRACT_ADDRESS}::dataset_registry::pay_and_access`;
-            const matchesDataset = args.length > 0 && args[0] === datasetId;
-            const txSuccess = tx.success === true;
+            // Fetch recent transactions for the buyer
+            const transactions = await aptos.getAccountTransactions({
+                accountAddress: buyerAddress,
+            });
             
-            return isPayAndAccess && matchesDataset && txSuccess;
-        });
+            console.log(`Found ${transactions.length} transactions for buyer ${buyerAddress}`);
 
-        if (hasPaid) {
-            console.log(`Payment verified for ${buyerAddress} on dataset ${datasetId}`);
-        } else {
-            console.log(`Payment NOT found for ${buyerAddress} on dataset ${datasetId}`);
+            const hasPaid = transactions.some((tx: any) => {
+                if (!tx.payload || !('function' in tx.payload)) return false;
+                
+                const fnId: string = tx.payload.function;
+                const args: any[] = tx.payload.arguments || [];
+                
+                const isPayAndAccess = fnId === `${CONTRACT_ADDRESS}::dataset_registry::pay_and_access`;
+                // Compare IDs as strings to handle both numbers and strings robustly
+                const matchesDataset = args.length > 0 && args[0].toString() === datasetId.toString();
+                const txSuccess = tx.success === true;
+                
+                if (isPayAndAccess && matchesDataset) {
+                    console.log(`Matching transaction found! Success: ${txSuccess}`);
+                }
+                
+                return isPayAndAccess && matchesDataset && txSuccess;
+            });
+
+            if (hasPaid) {
+                console.log(`Payment verified for ${buyerAddress} on dataset ${datasetId}`);
+                return true;
+            }
+
+            if (attempt < MAX_RETRIES) {
+                console.log(`Payment not found yet, retrying in ${RETRY_DELAY_MS}ms...`);
+                await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+            }
+        } catch (error) {
+            console.error(`Error in verifyPaymentEvent (Attempt ${attempt}):`, error);
         }
-
-        return hasPaid;
-    } catch (error) {
-        console.error('Error verifying payment:', error);
-        return false;
     }
+
+    console.log(`Payment NOT found for ${buyerAddress} on dataset ${datasetId} after ${MAX_RETRIES} attempts.`);
+    return false;
 };
 
 export const fetchDatasetOnChainInfo = async (datasetId: string): Promise<{ owner: string, storagePointer: string, hash: string, price: string, version: string } | null> => {
