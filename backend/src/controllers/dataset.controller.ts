@@ -8,21 +8,25 @@ export const uploadDataset = async (req: Request, res: Response): Promise<void> 
             return;
         }
 
-        const { price } = req.body;
-        const { datasetId, storagePointer, hash, onChainTxHash } = await datasetService.processUpload(req.file.buffer, price);
+        const price = req.body.price;
+        console.log(`Controller received price: ${price} (type: ${typeof price})`);
+        
+        const result = await datasetService.processUpload(req.file.buffer, price);
+        const { datasetId, storagePointer, hash, onChainTxHash, error: regError } = result;
         
         res.json({
             message: onChainTxHash 
                 ? 'Dataset uploaded to Shelby and registered on-chain successfully.' 
-                : 'Dataset uploaded to Shelby successfully. On-chain registration pending or failed.',
+                : 'Dataset uploaded to Shelby successfully. On-chain registration failed.',
             dataset_id: datasetId,
             storage_pointer: storagePointer,
             hash,
-            aptos_tx_hash: onChainTxHash
+            aptos_tx_hash: onChainTxHash,
+            registration_error: regError
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Upload controller error:', error);
-        res.status(500).json({ error: 'Failed to upload dataset' });
+        res.status(500).json({ error: 'Failed to upload dataset', details: error.message });
     }
 };
 

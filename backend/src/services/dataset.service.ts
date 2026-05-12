@@ -8,7 +8,7 @@ export const computeHash = (buffer: Buffer): string => {
 
 import { registerDatasetOnChain } from '../integrations/aptos';
 
-export const processUpload = async (fileBuffer: Buffer, price?: string): Promise<{ datasetId: string, storagePointer: string, hash: string, onChainTxHash?: string }> => {
+export const processUpload = async (fileBuffer: Buffer, price?: string): Promise<{ datasetId: string, storagePointer: string, hash: string, onChainTxHash?: string, error?: string }> => {
     const hash = computeHash(fileBuffer);
     const storagePointer = await uploadDataset(fileBuffer, hash);
     const datasetId = `ds_${Date.now()}`;
@@ -16,19 +16,23 @@ export const processUpload = async (fileBuffer: Buffer, price?: string): Promise
     console.log(`Processing upload: ${datasetId}, price: ${price}`);
 
     let onChainTxHash: string | undefined;
+    let registrationError: string | undefined;
+
     if (price && price !== "undefined" && price !== "null") {
         try {
             console.log(`Attempting on-chain registration for ${datasetId}...`);
             onChainTxHash = await registerDatasetOnChain(datasetId, storagePointer, hash, price);
             console.log(`Successfully registered ${datasetId} on-chain. TX: ${onChainTxHash}`);
         } catch (e: any) {
-            console.error(`CRITICAL: On-chain registration failed for ${datasetId}:`, e.message);
+            registrationError = e.message;
+            console.error(`CRITICAL: On-chain registration failed for ${datasetId}:`, registrationError);
         }
     } else {
+        registrationError = "Price missing or invalid";
         console.warn(`No valid price provided for ${datasetId}, skipping on-chain registration.`);
     }
 
-    return { datasetId, storagePointer, hash, onChainTxHash };
+    return { datasetId, storagePointer, hash, onChainTxHash, error: registrationError };
 };
 
 export const processPayment = async (datasetId: string, buyerAddress: string): Promise<string> => {

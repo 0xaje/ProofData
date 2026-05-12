@@ -135,7 +135,7 @@ export default function Home() {
         hash: data.hash,
         storagePointer: data.storage_pointer,
         datasetId: data.dataset_id,
-        aptosTxHash: data.aptos_tx_hash || "Registration in progress / check explorer"
+        aptosTxHash: data.aptos_tx_hash || `Error: ${data.registration_error || "Unknown"}`
       });
       setFile(null);
       setPrice("");
