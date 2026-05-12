@@ -115,10 +115,13 @@ export default function Home() {
     }
 
     try {
+      const priceInOctas = Math.floor(parseFloat(price || "0") * 100000000);
+      
       const formData = new FormData();
       formData.append('dataset', file);
+      formData.append('price', priceInOctas.toString());
 
-      // 1. Upload to backend (Shelby)
+      // 1. Upload & Register (Backend now handles both)
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
       const res = await fetch(`${backendUrl}/dataset/upload`, {
         method: 'POST',
@@ -126,40 +129,18 @@ export default function Home() {
       });
       
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-
-      const priceInOctas = Math.floor(parseFloat(price || "0") * 100000000);
-      let aptosTxHash = "";
-      
-      try {
-        // 2. REGISTER ON-CHAIN
-        console.log("Registering on-chain:", data.dataset_id);
-        const txResponse = await signAndSubmitTransaction({
-          data: {
-            function: `${MODULE_ADDRESS}::dataset_registry::register_dataset`,
-            typeArguments: [],
-            functionArguments: [
-              data.dataset_id,
-              data.storage_pointer,
-              data.hash.startsWith('0x') ? data.hash : `0x${data.hash}`, 
-              priceInOctas.toString()
-            ]
-          }
-        });
-        aptosTxHash = txResponse.hash.startsWith("0x") ? txResponse.hash : `0x${txResponse.hash}`;
-      } catch (txError: any) {
-        throw new Error(txError.message || "Wallet transaction failed.");
-      }
+      if (!res.ok) throw new Error(data.error || "Upload failed");
 
       setUploadResult({
         hash: data.hash,
         storagePointer: data.storage_pointer,
         datasetId: data.dataset_id,
-        aptosTxHash
+        aptosTxHash: data.aptos_tx_hash || "Registration pending"
       });
       setFile(null);
       setPrice("");
     } catch (error: any) {
+      console.error("Registration failed:", error);
       alert(`Registration Failed: ${error.message || "Unknown error"}`);
     }
   };

@@ -6,13 +6,24 @@ export const computeHash = (buffer: Buffer): string => {
     return crypto.createHash('sha256').update(buffer).digest('hex');
 };
 
-export const processUpload = async (fileBuffer: Buffer): Promise<{ datasetId: string, storagePointer: string, hash: string }> => {
+import { registerDatasetOnChain } from '../integrations/aptos';
+
+export const processUpload = async (fileBuffer: Buffer, price?: string): Promise<{ datasetId: string, storagePointer: string, hash: string, onChainTxHash?: string }> => {
     const hash = computeHash(fileBuffer);
     const storagePointer = await uploadDataset(fileBuffer, hash);
     const datasetId = `ds_${Date.now()}`;
     
-    // In a full implementation, you'd execute `register_dataset` on chain here, or return this for the client to execute.
-    return { datasetId, storagePointer, hash };
+    let onChainTxHash: string | undefined;
+    if (price) {
+        try {
+            onChainTxHash = await registerDatasetOnChain(datasetId, storagePointer, hash, price);
+            console.log(`Successfully registered ${datasetId} on-chain. TX: ${onChainTxHash}`);
+        } catch (e: any) {
+            console.warn(`On-chain registration failed for ${datasetId}, but file is in Shelby:`, e.message);
+        }
+    }
+
+    return { datasetId, storagePointer, hash, onChainTxHash };
 };
 
 export const processPayment = async (datasetId: string, buyerAddress: string): Promise<string> => {

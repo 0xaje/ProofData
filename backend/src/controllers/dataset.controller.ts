@@ -8,16 +8,20 @@ export const uploadDataset = async (req: Request, res: Response): Promise<void> 
             return;
         }
 
-        const { datasetId, storagePointer, hash } = await datasetService.processUpload(req.file.buffer);
+        const { price } = req.body;
+        const { datasetId, storagePointer, hash, onChainTxHash } = await datasetService.processUpload(req.file.buffer, price);
         
-        // Mock instruction to client to call Move contract `register_dataset`
         res.json({
-            message: 'Dataset uploaded to Shelby successfully. Please execute register_dataset on-chain.',
+            message: onChainTxHash 
+                ? 'Dataset uploaded to Shelby and registered on-chain successfully.' 
+                : 'Dataset uploaded to Shelby successfully. On-chain registration pending or failed.',
             dataset_id: datasetId,
             storage_pointer: storagePointer,
-            hash
+            hash,
+            aptos_tx_hash: onChainTxHash
         });
     } catch (error) {
+        console.error('Upload controller error:', error);
         res.status(500).json({ error: 'Failed to upload dataset' });
     }
 };

@@ -1,4 +1,4 @@
-import { Aptos, AptosConfig, Network } from '@aptos-labs/ts-sdk';
+import { Aptos, AptosConfig, Network, Account, Ed25519PrivateKey } from '@aptos-labs/ts-sdk';
 
 const aptosConfig = new AptosConfig({ 
     network: (process.env.NETWORK as Network) || Network.CUSTOM,
@@ -7,6 +7,35 @@ const aptosConfig = new AptosConfig({
 export const aptos = new Aptos(aptosConfig);
 
 export const CONTRACT_ADDRESS = process.env.CONTRACT_ADDRESS || '0xedb90d56ac0bc2553b546f4c4ca433bd1d8c58ceb1fc51314a74cefed867edff';
+const PRIVATE_KEY = process.env.PRIVATE_KEY;
+
+export const registerDatasetOnChain = async (id: string, storagePointer: string, hash: string, price: string): Promise<string> => {
+    if (!PRIVATE_KEY) throw new Error("PRIVATE_KEY not set in backend environment");
+
+    const privateKey = new Ed25519PrivateKey(PRIVATE_KEY);
+    const account = Account.fromPrivateKey({ privateKey });
+
+    // Convert hex hash to byte array
+    const hashHex = hash.startsWith('0x') ? hash.substring(2) : hash;
+    const hashBytes = hashHex.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || [];
+
+    try {
+        const transaction = await aptos.transaction.build.simple({
+            sender: account.accountAddress,
+            data: {
+                function: `${CONTRACT_ADDRESS}::dataset_registry::register_dataset`,
+                functionArguments: [id, storagePointer, new Uint8Array(hashBytes), price],
+            },
+        });
+
+        const pendingTxn = await aptos.signAndSubmitTransaction({ signer: account, transaction });
+        const response = await aptos.waitForTransaction({ transactionHash: pendingTxn.hash });
+        return response.hash;
+    } catch (error: any) {
+        console.error('Error registering dataset on-chain:', error.message);
+        throw error;
+    }
+};
 
 export const verifyPaymentEvent = async (datasetId: string, buyerAddress: string): Promise<boolean> => {
     try {
@@ -24,8 +53,6 @@ export const verifyPaymentEvent = async (datasetId: string, buyerAddress: string
             if (!tx.payload) return false;
             const fnId: string = tx.payload.function || '';
             const args: any[] = tx.payload.arguments || [];
-            
-            console.log(`Checking TX: ${fnId}, Args: ${JSON.stringify(args)}`);
             
             const isPayAndAccess = fnId === `${CONTRACT_ADDRESS}::dataset_registry::pay_and_access`;
             const matchesDataset = args.length > 0 && args[0] === datasetId;
